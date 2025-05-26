@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'restApiApp'
+        DOCKER_IMAGE = 'restapiapp'
     }
     stages {
         stage('Checkout') {
