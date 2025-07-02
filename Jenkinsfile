@@ -2,25 +2,115 @@ pipeline {
     agent any
     environment {
         DOCKER_IMAGE = 'restapiapp'
+        AWS_CREDENTIALS_ID = 'aws-credentials'
+        EC2_SSH_KEY_ID = 'aws-ssh'
+        TERRAFORM_DIR = '.'
+        MY_PUBLIC_IP = '93.159.2.113/32'
     }
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
                 git url: 'https://github.com/SkrytyZubr/crud-app-spring-restapi-db.git', branch: 'main'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Terraform Init'){
             steps {
                 script {
-                    docker.build(env.DOCKER_IMAGE)
+                    dir(env.TERRAFORM_DIR) {
+                        withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
+                            sh 'terraform init'
+                        }
+                    }
                 }
             }
         }
-        stage('Run Docker Container') {
-           steps {
-                bat 'docker-compose up -d --build'
+
+        stage('Terraform Plan') {
+            steps {
+                script {
+                    dir(env.TERRAFORM_DIR) {
+                        withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
+                            sh "terraform plan -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
+                        }
+                    }
+                }
             }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    dir(env.TERRAFORM_DIR) {
+                        withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
+                            sh "terraform apply -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Get EC2 Public IP') {
+            steps {
+                script {
+                    dir(env.TERRAFORM_DIR) {
+                        env.EC2_PUBLIC_IP = sh(returnStdout: true, script: 'terraform output -raw ec2_public_ip').trim()
+                        echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy application with docker compose') {
+            steps {
+                script {
+                    withCredentials([sshUserPrivateKey(credentialsId: env.EC2_SSH_KEY_ID, keyFileVariable: 'SSH_KEY_FILE')]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${env.EC2_PUBLIC_IP} <<EOF
+                                # move to folder location (np. /home/ubuntu/)
+                                cd /home/ubuntu/
+
+                                # clone repo
+                                if [ ! -d "crud-app-spring-restapi-db" ]; then
+                                    git clone https://github.com/SkrytyZubr/crud-app-spring-restapi-db.git
+                                fi
+
+                                # move to cloned repo
+                                cd crud-app-spring-restapi-db
+
+                                # run Docker Compose
+                                docker-compose up -d --build
+                            EOF
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Destroy (Optional)') {
+            when {
+                // Możesz dodać warunek, np. gdy branch to 'destroy-infra'
+                // expression { env.BRANCH_NAME == 'destroy-infra' }
+                // lub uruchamiać ręcznie
+                manualInput "Czy chcesz zniszczyć infrastrukturę AWS?"
+            }
+            steps {
+                script {
+                    dir(env.TERRAFORM_DIR) {
+                        withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
+                            sh "terraform destroy -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\"" // TODO: Zmień nazwę klucza
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo "Pipeline finished."
+        }
+        failure {
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }
