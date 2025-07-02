@@ -88,17 +88,13 @@ pipeline {
         }
 
         stage('Terraform Destroy (Optional)') {
-            when {
-                // Możesz dodać warunek, np. gdy branch to 'destroy-infra'
-                // expression { env.BRANCH_NAME == 'destroy-infra' }
-                // lub uruchamiać ręcznie
-                manualInput "Czy chcesz zniszczyć infrastrukturę AWS?"
-            }
             steps {
                 script {
+                    input(id: 'destroyConfirm', message: 'Czy na pewno chcesz zniszczyć infrastrukturę AWS?', ok: 'Tak, zniszcz!')
+
                     dir(env.TERRAFORM_DIR) {
                         withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
-                            sh "terraform destroy -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\"" // TODO: Zmień nazwę klucza
+                            sh "terraform destroy -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
                         }
                     }
                 }
