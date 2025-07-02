@@ -19,7 +19,7 @@ pipeline {
                 script {
                     dir(env.TERRAFORM_DIR) {
                         withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
-                            sh 'terraform init'
+                            bat 'terraform init'
                         }
                     }
                 }
@@ -31,7 +31,7 @@ pipeline {
                 script {
                     dir(env.TERRAFORM_DIR) {
                         withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
-                            sh "terraform plan -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
+                            bat "terraform plan -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
                         }
                     }
                 }
@@ -43,7 +43,7 @@ pipeline {
                 script {
                     dir(env.TERRAFORM_DIR) {
                         withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
-                            sh "terraform apply -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
+                            bat "terraform apply -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
                         }
                     }
                 }
@@ -54,7 +54,7 @@ pipeline {
             steps {
                 script {
                     dir(env.TERRAFORM_DIR) {
-                        env.EC2_PUBLIC_IP = sh(returnStdout: true, script: 'terraform output -raw ec2_public_ip').trim()
+                        env.EC2_PUBLIC_IP = bat(returnStdout: true, script: 'terraform output -raw ec2_public_ip').trim()
                         echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
                     }
                 }
@@ -65,7 +65,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: env.EC2_SSH_KEY_ID, keyFileVariable: 'SSH_KEY_FILE')]) {
-                        sh """
+                        bat """
                             ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${env.EC2_PUBLIC_IP} <<EOF
                                 # move to folder location (np. /home/ubuntu/)
                                 cd /home/ubuntu/
@@ -94,7 +94,7 @@ pipeline {
 
                     dir(env.TERRAFORM_DIR) {
                         withCredentials([aws(credentialsId: env.AWS_CREDENTIALS_ID)]) {
-                            sh "terraform destroy -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
+                            bat "terraform destroy -auto-approve -var=\"my_ip_address=${env.MY_PUBLIC_IP}\" -var=\"aws_key_pair_name=terraform-crud-app\""
                         }
                     }
                 }
