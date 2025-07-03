@@ -4,13 +4,24 @@ pipeline {
         DOCKER_IMAGE = 'restapiapp'
         AWS_CREDENTIALS_ID = 'aws-credentials'
         EC2_SSH_KEY_ID = 'aws-ssh'
-        TERRAFORM_DIR = '.'
         MY_PUBLIC_IP = '93.159.2.113/32'
+
+        TERRAFORM_DIR = 'ops-repo/terraform' 
+        APP_REPO_DIR = 'app-repo'
     }
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout OPS SCM') {
             steps {
-                git url: 'https://github.com/SkrytyZubr/crud-app-spring-restapi-db.git', branch: 'main'
+                dir('ops-repo') {
+                    git branch: 'main', url: 'https://github.com/SkrytyZubr/crud-app-spring-restapi-db-ops.git'
+                }
+            }
+        }
+    stage('Checkout APP SCM') {
+        steps {
+            dir(env.APP_REPO_DIR) {
+                    git branch: 'main', url: 'https://github.com/SkrytyZubr/crud-app-spring-restapi-db.git'
+                }
             }
         }
 
