@@ -6,7 +6,7 @@ pipeline {
         EC2_SSH_KEY_ID = 'aws-ssh'
         MY_PUBLIC_IP = '93.159.2.113/32'
 
-        TERRAFORM_DIR = 'ops-repo/terraform' 
+        TERRAFORM_DIR = 'ops-repo' 
         APP_REPO_DIR = 'app-repo'
     }
     stages {
