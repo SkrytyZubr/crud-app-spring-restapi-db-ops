@@ -77,7 +77,7 @@ pipeline {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh', keyFileVariable: 'SSH_KEY')]) {
                         bat """
-                            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${env.EC2_PUBLIC_IP} <<EOF
+                            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ubuntu@${env.EC2_PUBLIC_IP} <<EOF
                                 # move to folder location (np. /home/ubuntu/)
                                 cd /home/ubuntu/
 
