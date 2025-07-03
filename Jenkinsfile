@@ -76,19 +76,19 @@ pipeline {
         stage('Deploy application with docker compose') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: env.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: env.EC2_SSH_KEY_ID, keyFileVariable: 'SSH_KEY')]) {
                         echo "Starting application deployment to EC2."
-
+        
                         dir('ops-repo') {
                             bat "scp -o StrictHostKeyChecking=no -i \"${SSH_KEY}\" docker-compose.yml ubuntu@${env.EC2_PUBLIC_IP}:~/docker-compose.yml"
                         }
-
+        
                         dir('app-repo') {
                             bat "scp -o StrictHostKeyChecking=no -i \"${SSH_KEY}\" -r . ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo"
                         }
-
+        
                         bat "ssh -o StrictHostKeyChecking=no -i \"${SSH_KEY}\" ubuntu@${env.EC2_PUBLIC_IP} \"cd ~/app-repo && sudo docker build -t crud-app . && cd ~ && sudo docker-compose up -d\""
-
+        
                         echo "Application deployment initiated. Check EC2 for status."
                     }
                 }
