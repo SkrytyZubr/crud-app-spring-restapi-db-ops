@@ -64,8 +64,9 @@ pipeline {
         stage('Get EC2 Public IP') {
             steps {
                 script {
-                    dir(env.TERRAFORM_DIR) {
-                        env.EC2_PUBLIC_IP = bat(returnStdout: true, script: 'terraform output -raw ec2_public_ip').trim()
+                    dir('ops-repo') {
+                        def ec2PublicIp = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                        env.EC2_PUBLIC_IP = ec2PublicIp
                         echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
                     }
                 }
@@ -76,23 +77,20 @@ pipeline {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh', keyFileVariable: 'SSH_KEY')]) {
-                        bat """
-                            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ubuntu@${env.EC2_PUBLIC_IP} <<EOF
-                                # move to folder location (np. /home/ubuntu/)
-                                cd /home/ubuntu/
-
-                                # clone repo
-                                if [ ! -d "crud-app-spring-restapi-db" ]; then
-                                    git clone https://github.com/SkrytyZubr/crud-app-spring-restapi-db.git
-                                fi
-
-                                # move to cloned repo
-                                cd crud-app-spring-restapi-db
-
-                                # run Docker Compose
-                                docker-compose up -d --build
-                            EOF
+                        echo "Deploying to EC2 instance at ${env.EC2_PUBLIC_IP} with SSH key ${SSH_KEY}"
+        
+                        bat "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} -r app-repo/ ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo/"
+                        bat "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} ops-repo/docker-compose.yml ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo/docker-compose.yml"
+        
+        
+                        def remoteCommands = """
+                        sudo systemctl start docker
+                        cd app-repo/
+                        sudo docker-compose down || true
+                        sudo docker-compose up --build -d
                         """
+
+                        bat "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ubuntu@${env.EC2_PUBLIC_IP} \"${remoteCommands}\""
                     }
                 }
             }
