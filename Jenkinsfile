@@ -75,7 +75,7 @@ pipeline {
         stage('Deploy application with docker compose') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(credentialsId: env.EC2_SSH_KEY_ID, keyFileVariable: 'SSH_KEY_FILE')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh', keyFileVariable: 'SSH_KEY')]) {
                         bat """
                             ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${env.EC2_PUBLIC_IP} <<EOF
                                 # move to folder location (np. /home/ubuntu/)
