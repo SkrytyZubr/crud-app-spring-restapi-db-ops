@@ -67,7 +67,7 @@ pipeline {
                     dir('ops-repo') {
                         def ec2PublicIp = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
                         env.EC2_PUBLIC_IP = ec2PublicIp
-                        echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
+                        echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}" 
                     }
                 }
             }
@@ -77,20 +77,17 @@ pipeline {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'aws-ssh', keyFileVariable: 'SSH_KEY')]) {
-                        echo "Deploying to EC2 instance at ${env.EC2_PUBLIC_IP} with SSH key ${SSH_KEY}"
+                        echo "Deploying to EC2 instance at ${env.EC2_PUBLIC_IP} with SSH key (masked)"
         
-                        bat "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} -r app-repo/ ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo/"
-                        bat "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} ops-repo/docker-compose.yml ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo/docker-compose.yml"
+                        dir('ops-repo') {
+                            bat "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} docker-compose.yml ubuntu@${env.EC2_PUBLIC_IP}:~/docker-compose.yml"
+                        }
         
+                        dir('app-repo') {
+                            bat "scp -o StrictHostKeyChecking=no -i ${SSH_KEY} -r . ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo"
+                        }
         
-                        def remoteCommands = """
-                        sudo systemctl start docker
-                        cd app-repo/
-                        sudo docker-compose down || true
-                        sudo docker-compose up --build -d
-                        """
-
-                        bat "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ubuntu@${env.EC2_PUBLIC_IP} \"${remoteCommands}\""
+                        bat "ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ubuntu@${env.EC2_PUBLIC_IP} \"cd ~/app-repo && sudo docker build -t crud-app . && cd ~ && sudo docker-compose up -d\""
                     }
                 }
             }
