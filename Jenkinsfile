@@ -87,7 +87,7 @@ pipeline {
                         //     bat "scp -o StrictHostKeyChecking=no -i \"${SSH_KEY}\" -r . ubuntu@${env.EC2_PUBLIC_IP}:~/app-repo"
                         // }
                         
-                        bat "ssh -o StrictHostKeyChecking=no -i \"${SSH_KEY}\" ubuntu@${env.EC2_PUBLIC_IP} \"cd ~/app-repo && sudo docker build -t crud-app . && cd ~ && sudo docker-compose up -d\""
+                        bat "ssh -o StrictHostKeyChecking=no -i \"${SSH_KEY}\" ubuntu@${aws} \"cd ~/app-repo && sudo docker build -t crud-app . && cd ~ && sudo docker-compose up -d\""
         
                         echo "Application deployment initiated. Check EC2 for status."
                     }
